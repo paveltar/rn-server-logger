@@ -8,12 +8,21 @@ import safeStringify from '../utils/safeStringify';
 
 const INITIAL_STATE = { REQUEST: [], RESPONSE: [], PRINT: [] }
 
-// The URL axios actually requests (baseURL + url + params); never let logging break a request
+const isAbsoluteUrl = (url) => /^([a-z][a-z\d+\-.]*:)?\/\//i.test(url);
+
+// The URL axios actually requests: this request's own baseURL + url (not the root axios.defaults, which
+// axios.getUri would merge in and which axios < 0.27 ignores anyway), with params serialized by axios.
+// Never let logging break a request.
 const getRequestUrl = (config) => {
+    if (!config) return '';
+    let path = config.url || '';
     try {
-        return config ? axios.getUri(config) : '';
+        const { baseURL = '', url = '', params, paramsSerializer, allowAbsoluteUrls } = config;
+        const useBase = baseURL && (!isAbsoluteUrl(url) || allowAbsoluteUrls === false);
+        path = !useBase ? url : !url ? baseURL : `${baseURL.replace(/\/+$/, '')}/${url.replace(/^\/+/, '')}`;
+        return axios.getUri({ baseURL: '', url: path, params, paramsSerializer }) || path;
     } catch (e) {
-        return config.url || '';
+        return path;
     }
 };
 
@@ -30,7 +39,7 @@ const useServerLogger = () => {
     const responseInterceptorRef = useRef();
     const isTrackingLogsRef = useRef(true);
     const [isTrackingLogs, setIsTrackingLogs] = useState(true);
-    const [{ REQUEST, RESPONSE, PRINT }, setLogs] = useState(INITIAL_STATE);
+    const [logs, setLogs] = useState(INITIAL_STATE);
 
     useEffect(() => {
         // Set up interceptors
@@ -73,7 +82,6 @@ const useServerLogger = () => {
             type: LOG_TYPES[0],
             url: getRequestUrl(config),
             requestData: config.data,
-            status: 0,
         });
         return config;
     }, []);
@@ -92,7 +100,8 @@ const useServerLogger = () => {
     const responseErrorInterceptorHelper = useCallback((error) => {
         writeToLogHelper({
             type: LOG_TYPES[2],
-            url: getRequestUrl(error?.config),
+            // An error thrown by another interceptor arrives as a plain Error with no request config
+            url: error?.config ? getRequestUrl(error.config) : '(no request config)',
             requestData: error?.config?.data,
             responseData: error?.response?.data,
             status: error?.response?.status,
@@ -113,7 +122,8 @@ const useServerLogger = () => {
 
     const clearLogs = () => setLogs(INITIAL_STATE);
 
-    return [{ REQUEST, RESPONSE, PRINT }, isTrackingLogs, toggleTracking, clearLogs, printHelper]
+    // The state object itself, so consumers can memoize on it
+    return [logs, isTrackingLogs, toggleTracking, clearLogs, printHelper]
 };
 
 export default useServerLogger;

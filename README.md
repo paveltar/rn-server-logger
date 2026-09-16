@@ -22,7 +22,8 @@ axiosInherit(axios);
 #### 3.Add the ServerLogger component to your App component and make sure to only render it in the test environment, for example:
 ```tsx
 
-import ServerLogger, { ServerLoggerHandle } from 'rn-server-logger';
+import ServerLogger from 'rn-server-logger';
+import type { ServerLoggerHandle } from 'rn-server-logger';
 
 export const serverLoggerRef = React.createRef<ServerLoggerHandle>()
 
@@ -47,7 +48,7 @@ const App = () => {
 
 `printHelper` accepts any value (strings, objects, errors, ...) and returns it unchanged, so it can wrap an expression: `const user = serverLoggerRef.current?.printHelper(await fetchUser());`
 
-Failed requests appear in the RESPONSE tab, in order with successful ones and marked in red, with the status and server response body (e.g. a 500 with its JSON body). Requests that got no response show an `Error` line instead, such as `Timeout: timeout of 5000ms exceeded` or `ERR_NETWORK: Network Error`.
+Failed requests appear in the RESPONSE tab, in order with successful ones and marked in red. Every failed request has an `Error` line with the axios error code and message, such as `ERR_BAD_RESPONSE: Request failed with status code 500`, `Timeout: timeout of 5000ms exceeded` or `ERR_NETWORK: Network Error`. When the server answered, the status and the response body (e.g. a 500 with its JSON body) are shown as well.
 
 ## Changes
 #### renderLogTypeButtons function

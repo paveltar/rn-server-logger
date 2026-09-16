@@ -76,16 +76,7 @@ const ServerLogger = forwardRef<ServerLoggerHandle>((_, ref) => {
       if (!searchText) return true;
       return [log.url, log.requestData, log.responseData, log.message, log.error]
         .some(field => field != null && searchRegExp.test(String(field)));
-    }).map(log => (log.type === LOG_TYPES[3] ? log : {
-      id: log.timestamp,
-      message: log.url,
-      type: log.type,
-      timestamp: log.timestamp,
-      requestData: log.requestData,
-      responseData: log.responseData,
-      status: log.status,
-      error: log.error,
-    }));
+    }).map(log => (log.type === LOG_TYPES[3] ? log : { ...log, message: log.url })); // HTTP rows show the url on the Message line
   }, [logs, logType, searchText]);
 
   const highlightedText = useCallback(
