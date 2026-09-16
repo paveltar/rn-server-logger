@@ -3,7 +3,7 @@ import { Modal, Share, TouchableOpacity } from 'react-native';
 import TestRenderer, { act } from 'react-test-renderer';
 import type { ReactTestInstance, ReactTestRenderer } from 'react-test-renderer';
 import { ServerLogger } from '../ServerLogger';
-import { add, clear, getEntries, isTracking, nextId, setTracking } from '../store';
+import { add, clear, enable, getEntries, isTracking, nextId, setTracking } from '../store';
 import type { HttpEntry, PrintEntry } from '../store';
 
 const { shake } = jest.requireMock('react-native-shake') as { shake: () => void };
@@ -26,6 +26,7 @@ const press = async (id: string) => act(async () => { byTestId(id).props.onPress
 const type = async (text: string) => act(async () => { byTestId('search').props.onChangeText(text); });
 
 beforeEach(async () => {
+  enable();
   clear();
   setTracking(true);
   add(http({ url: 'https://api.test/first' }));

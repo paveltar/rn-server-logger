@@ -1,4 +1,4 @@
-import { add, clear, getEntries, isTracking, MAX_ENTRIES, nextId, setTracking, subscribe, update } from '../store';
+import { add, clear, enable, getEntries, isTracking, MAX_ENTRIES, nextId, setTracking, subscribe, update } from '../store';
 import type { HttpEntry } from '../store';
 
 const http = (over: Partial<HttpEntry> = {}): HttpEntry => ({
@@ -6,6 +6,7 @@ const http = (over: Partial<HttpEntry> = {}): HttpEntry => ({
 });
 
 beforeEach(() => {
+  enable();
   clear();
   setTracking(true);
 });

@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { Button, FlatList, Modal, SafeAreaView, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import RNShake from 'react-native-shake';
-import { clear, getEntries, isFailed, isTracking, setTracking, subscribe } from './store';
+import { clear, getEntries, isEnabled, isFailed, isTracking, setTracking, subscribe } from './store';
 import type { LogEntry } from './store';
 import { shareEntries } from './exportText';
 import { EntryRow } from './EntryRow';
@@ -27,8 +26,19 @@ const matches = (entry: LogEntry, regExp: RegExp): boolean =>
 
 const keyExtractor = (entry: LogEntry): string => String(entry.id);
 
-/** The log viewer. Render it once, in test builds only. Opens on shake. */
+// react-native-shake is loaded only once the logger is enabled: creating its native module starts
+// the accelerometer, so an app that never calls attach never loads it. tsconfig has no Node types;
+// the emitted CommonJS require is what Metro and jest provide.
+declare const require: (id: string) => unknown;
+type ShakeModule = typeof import('react-native-shake');
+const loadShake = (): ShakeModule['default'] => {
+  const loaded = require('react-native-shake') as ShakeModule | ShakeModule['default'];
+  return 'default' in loaded ? loaded.default : loaded;
+};
+
+/** The log viewer. Render it once; it stays hidden until attach has been called. Opens on shake. */
 export const ServerLogger: React.FC = () => {
+  const enabled = useSyncExternalStore(subscribe, isEnabled);
   const entries = useSyncExternalStore(subscribe, getEntries);
   const tracking = useSyncExternalStore(subscribe, isTracking);
   const [open, setOpen] = useState(false);
@@ -37,9 +47,10 @@ export const ServerLogger: React.FC = () => {
   const [expandedIds, setExpandedIds] = useState<ReadonlySet<number>>(() => new Set());
 
   useEffect(() => {
-    const subscription = RNShake.addListener(() => setOpen(true));
+    if (!enabled) return undefined;
+    const subscription = loadShake().addListener(() => setOpen(true));
     return () => subscription.remove();
-  }, []);
+  }, [enabled]);
 
   // The capturing group makes split() return the matches at the odd indexes, so highlighting scans once
   const searchRegExp = useMemo(
@@ -77,6 +88,7 @@ export const ServerLogger: React.FC = () => {
     setTimeout(() => shareEntries(getEntries()), 300);
   };
 
+  if (!enabled) return null;
   // The Modal renders nothing while closed; skip building its tree on every store change
   if (!open) return <Modal visible={false} onRequestClose={close} />;
 

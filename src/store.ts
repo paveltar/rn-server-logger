@@ -29,6 +29,7 @@ export const MAX_ENTRIES = 500;
 type Listener = () => void;
 
 let entries: LogEntry[] = [];
+let enabled = false;
 let tracking = true;
 let lastId = 0;
 const listeners = new Set<Listener>();
@@ -49,16 +50,29 @@ export const subscribe = (listener: Listener): (() => void) => {
   };
 };
 
+/** True once attach has been called. Before that nothing is recorded and the viewer stays hidden. */
+export const isEnabled = (): boolean => enabled;
+
+/** Turns the logger on. attach calls this; it is internal and not exported from the package. */
+export const enable = (): void => {
+  if (enabled) return;
+  enabled = true;
+  notify();
+};
+
 export const isTracking = (): boolean => tracking;
+
+/** Whether a new entry would be kept right now: the logger is enabled and tracking is on. */
+export const isRecording = (): boolean => enabled && tracking;
 
 export const setTracking = (on: boolean): void => {
   tracking = on;
   notify();
 };
 
-/** Ignored while tracking is off. */
+/** Ignored until attach has been called, and while tracking is off. */
 export const add = (entry: LogEntry): void => {
-  if (!tracking) return;
+  if (!isRecording()) return;
   entries = [entry, ...entries.slice(0, MAX_ENTRIES - 1)];
   notify();
 };

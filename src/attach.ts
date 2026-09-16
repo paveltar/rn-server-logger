@@ -1,5 +1,5 @@
 import type { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { add, isTracking, nextId, update } from './store';
+import { add, enable, isRecording, nextId, update } from './store';
 import type { HttpEntry } from './store';
 import { describeError, serialize } from './serialize';
 import { requestUrl } from './requestUrl';
@@ -39,7 +39,7 @@ const complete = guarded((response: AxiosResponse | undefined) => {
 // The URL is built by the instance itself (its getUri), so the handlers are created per instance
 const createHandlers = (instance: AxiosInstance) => {
   const record = guarded((config: AxiosRequestConfig) => {
-    if (!isTracking()) return;
+    if (!isRecording()) return;
     const startedAt = Date.now();
     const entry: HttpEntry = { id: nextId(), kind: 'http', startedAt, method: methodOf(config), url: requestUrl(instance, config) };
     if (config.data !== undefined) entry.requestBody = serialize(config.data);
@@ -90,8 +90,10 @@ const createHandlers = (instance: AxiosInstance) => {
 /**
  * Logs every request made through this instance. Call it right after axios.create, before adding your
  * own interceptors, so the log shows the request as sent and the response as received. Idempotent.
+ * The first call turns the logger on: until then nothing is recorded and the viewer stays hidden.
  */
 export const attach = <T extends AxiosInstance>(instance: T): T => {
+  enable();
   if (!attached.has(instance)) {
     const { onRequest, onResponse, onError } = createHandlers(instance);
     attached.set(instance, {
