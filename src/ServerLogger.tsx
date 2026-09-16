@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import { Button, FlatList, Modal, SafeAreaView, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Button, FlatList, Modal, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+// react-native's own SafeAreaView is deprecated since RN 0.81; this native view needs no provider inside a Modal
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { clear, getEntries, isEnabled, isFailed, isTracking, setTracking, subscribe } from './store';
 import type { LogEntry } from './store';
 import { shareEntries } from './exportText';
