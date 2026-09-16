@@ -4,12 +4,13 @@ import Share from 'react-native-share';
 import RNFS from 'react-native-fs';
 import moment from 'moment';
 
+const SEPARATOR = '---------------------------------';
+
 const exportLogsToFileAndShare = async (logs) => {
-    let txtFile = '';
-    logs.sort((a, b) => b.timestamp - a.timestamp).forEach((point) => {
-        const { type, timestamp, url, requestData, responseData, status, message, error } = point;
-        // Fields a log does not have (MESSAGE for HTTP logs, the rest for PRINT logs) are left out
-        const fields = [
+    // Newest first; fields a log does not have (MESSAGE for HTTP logs, the rest for PRINT logs) are left out
+    const entries = [...logs].sort((a, b) => b.id - a.id).map((log) => {
+        const { type, timestamp, url, requestData, responseData, status, message, error } = log;
+        return [
             ['TYPE', type],
             ['TIME', moment(timestamp).format('DD-MM-YY HH:mm:ss.SSS')],
             ['MESSAGE', message],
@@ -18,13 +19,12 @@ const exportLogsToFileAndShare = async (logs) => {
             ['RESPONSE DATA', responseData],
             ['STATUS', status],
             ['ERROR', error],
-        ].filter(([, value]) => value !== undefined);
-        txtFile += `
-    ${fields.map(([label, value]) => `${label}: ${value}\n`).join('\n    ')}
-    ---------------------------------
-    \n
-    `;
+        ]
+            .filter(([, value]) => value !== undefined)
+            .map(([label, value]) => `${label}: ${value}`)
+            .join('\n');
     });
+    const txtFile = entries.map((entry) => `${entry}\n${SEPARATOR}\n\n`).join('');
 
     const filename = 'logs.txt';
     const filepath = `${(RNFS.CachesDirectoryPath)}/${filename}`;

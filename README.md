@@ -13,6 +13,8 @@ add the dependency to your package.json file:
 yarn add react-native-shake@5.1.1 react-native-fs react-native-share axios-inherit moment && cd ios && pod install && cd .. 
 ```
 
+The logger needs axios 0.27 or newer (declared as a peer dependency).
+
 #### 2. Add the following code at the top of the file, after importing axios, before the first usage of axios.create:
 ```js
 const axiosInherit = require('axios-inherit');
@@ -48,7 +50,7 @@ const App = () => {
 
 `printHelper` accepts any value (strings, objects, errors, ...) and returns it unchanged, so it can wrap an expression: `const user = serverLoggerRef.current?.printHelper(await fetchUser());`
 
-Logs are listed newest first. Failed requests appear in the RESPONSE tab, in order with successful ones and marked in red. Every failed request has an `Error` line with the axios error code and message, such as `ERR_BAD_RESPONSE: Request failed with status code 500`, `Timeout: timeout of 5000ms exceeded` or `ERR_NETWORK: Network Error`. When the server answered, the status and the response body (e.g. a 500 with its JSON body) are shown as well.
+Logs are listed newest first. Failed requests appear in the RESPONSE tab, in order with successful ones and marked in red. Every failed request has an `Error` line with the axios error code and message, such as `ERR_BAD_RESPONSE: Request failed with status code 500`, `Timeout: timeout of 5000ms exceeded` or `ERR_NETWORK: Network Error`. When the server answered, the status and the response body (e.g. a 500 with its JSON body) are shown as well. Request and response bodies (and printed values) longer than 64 KB are cut off with a `[truncated, N KB total]` marker, on screen and in the export.
 
 ## Changes
 #### renderLogTypeButtons function

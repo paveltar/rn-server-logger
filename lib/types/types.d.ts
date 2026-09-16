@@ -1,5 +1,11 @@
-declare const LOG_TYPES: LogType[];
 declare type LogType = 'REQUEST' | 'RESPONSE' | 'ERROR' | 'PRINT';
+declare type LogTab = 'REQUEST' | 'RESPONSE' | 'PRINT';
+declare const LOG_TYPE: { readonly REQUEST: 'REQUEST'; readonly RESPONSE: 'RESPONSE'; readonly ERROR: 'ERROR'; readonly PRINT: 'PRINT' };
+declare const LOG_TYPES: LogType[];
+// The tabs of the logger, and the tab each log type is listed in (ERROR logs are listed with the responses)
+declare const LOG_TABS: LogTab[];
+declare const TAB_FOR_TYPE: Record<LogType, LogTab>;
+
 interface WriteToLogHelperPayload {
     type: LogType;
     url?: string;
@@ -11,16 +17,18 @@ interface WriteToLogHelperPayload {
 }
 
 interface Log {
+    id: number;
     type: LogType;
     url: string;
     timestamp: number;
-    requestData: string;
+    requestData?: string;
     responseData?: string;
     status?: number;
     error?: string;
 }
 
 interface PrintLog {
+    id: number;
     timestamp: number;
     type: LogType;
     message: string;
@@ -55,4 +63,4 @@ interface ServerLoggerHandle {
     printHelper(message: any): void;
 }
 
-export { LOG_TYPES, LogType, WriteToLogHelperPayload, Log, PrintLog, Logger, LoggerState, ExportOptions, ServerLoggerHandle };
+export { LOG_TYPE, LOG_TYPES, LOG_TABS, TAB_FOR_TYPE, LogType, LogTab, WriteToLogHelperPayload, Log, PrintLog, Logger, LoggerState, ExportOptions, ServerLoggerHandle };

@@ -1,11 +1,8 @@
 //@ts-nocheck
 import React, { useCallback } from 'react';
 import { TouchableOpacity, View, Text } from 'react-native';
-import { LOG_TYPES } from '../types/types';
+import { LOG_TABS } from '../types/types';
 import styles from './styles';
-
-// ERROR logs are listed in the RESPONSE tab
-const LOG_TABS = LOG_TYPES.filter((type) => type !== LOG_TYPES[2]);
 
 const LogTypeButton = ({ type, onPress, isActive }) => (
     <TouchableOpacity onPress={onPress}>

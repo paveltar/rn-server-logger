@@ -22,26 +22,78 @@ import useServerLogger from '../hooks/useServerLogger';
 import exportLogsToFileAndShare from '../services/exportLogsToFileAndShare';
 import styles from './styles';
 import LogTypeButtonGroup from './LogTypeButtons';
-import { LOG_TYPES } from '../types/types';
+import { LOG_TYPE, LOG_TABS } from '../types/types';
 import type { ServerLoggerHandle } from '../types/types';
 
 const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+// The fields a search term is matched against
+const searchableFields = (log) => [log.url, log.requestData, log.responseData, log.message, log.error, log.status];
+
+// The text with every match wrapped in a highlighted Text; the rest of the styling comes from the enclosing Text
+const highlightedText = (text, searchRegExp) => {
+  const value = String(text ?? '');
+  if (!searchRegExp) return value;
+  const matches = value.match(searchRegExp);
+  return value.split(searchRegExp).map((part, i) => (
+    <React.Fragment key={i}>
+      {part}
+      {matches && matches[i] && <Text style={styles.highlightedText}>{matches[i]}</Text>}
+    </React.Fragment>
+  ));
+};
+
+// Memoized so rows only re-render when their log or the search term changes
+const LogRow = React.memo(({ item, searchRegExp }) => {
+  const isError = item.type === LOG_TYPE.ERROR;
+  return (
+    <View style={[styles.logContainer, isError && styles.errorLogContainer]}>
+      <View>
+        <Text style={styles.text}>
+          {moment(item.timestamp).format('HH:mm:ss')}
+        </Text>
+        {item.type !== LOG_TYPE.PRINT && <Text style={[styles.text, isError && styles.errorText]}>HTTP {item.type}</Text>}
+      </View>
+      <Text style={styles.text}>
+        Message: {highlightedText(item.message ?? item.url, searchRegExp)}
+      </Text>
+      {item.status != null && <Text style={styles.text}>
+        Status: {highlightedText(item.status, searchRegExp)}
+      </Text>}
+      {!!item.error && <Text style={[styles.text, styles.errorText]}>
+        Error: {highlightedText(item.error, searchRegExp)}
+      </Text>}
+      {!!item.requestData && <Text style={styles.text}>
+        Request Data: {highlightedText(item.requestData, searchRegExp)}
+      </Text>}
+      {!!item.responseData && <Text style={styles.text}>
+        Response Data:{" "}
+        {highlightedText(item.responseData, searchRegExp)}
+      </Text>}
+    </View>
+  );
+});
+
+const EmptyList = () => (
+  <View style={styles.emptyListContainer}>
+    <Text style={styles.title}>{'No logs in the\npast 60 seconds'}</Text>
+  </View>
+);
+
+const keyExtractor = (item) => String(item.id);
+const getItemCount = (data) => data.length;
+const getItem = (data, index) => data[index];
+
 const ServerLogger = forwardRef<ServerLoggerHandle>((_, ref) => {
   const [logs, isTrackingLogs, toggleTracking, clearLogs, printHelper] = useServerLogger();
-  const [logType, setLogType] = useState<string>('REQUEST');
+  const [logType, setLogType] = useState(LOG_TYPE.REQUEST);
   const [showLogger, setShowLogger] = useState<boolean>(false);
   const [searchText, setSearchText] = useState<string>('');
 
   const onDismiss = () => setShowLogger(false);
-  const onShake = () => setShowLogger(true);
-
-  const onClear = useCallback(() => {
-    clearLogs();
-  }, [clearLogs]);
 
   useEffect(() => {
-    let subscription = RNShake.addListener(() => onShake());
+    const subscription = RNShake.addListener(() => setShowLogger(true));
     return () => {
       subscription.remove();
     };
@@ -49,67 +101,30 @@ const ServerLogger = forwardRef<ServerLoggerHandle>((_, ref) => {
 
   const onExport = useCallback(() => {
     onDismiss();
-    setTimeout(
-      () =>
-        exportLogsToFileAndShare([
-          ...logs.REQUEST,
-          ...logs.RESPONSE,
-          ...logs.PRINT,
-        ]),
-      300
-    );
-  }, [logs.REQUEST, logs.RESPONSE, logs.PRINT]);
+    setTimeout(() => exportLogsToFileAndShare(LOG_TABS.flatMap((tab) => logs[tab])), 300);
+  }, [logs]);
 
-  const shouldDisableButtons = useMemo(
-    () =>
-      logs.REQUEST.length === 0 &&
-      logs.RESPONSE.length === 0 &&
-      logs.PRINT.length === 0,
-    [logs]
+  const isEmpty = LOG_TABS.every((tab) => logs[tab].length === 0);
+
+  // Built once per search term and shared by the filter and the highlighter
+  const searchRegExp = useMemo(
+    () => (searchText ? new RegExp(escapeRegExp(searchText), 'gi') : null),
+    [searchText]
   );
 
+  const tabLogs = logs[logType];
   const filteredLogs = useMemo(() => {
-    const searchRegExp = new RegExp(escapeRegExp(searchText), 'i');
-    const logTypeLogs = logs[logType] || [];
+    if (!showLogger) return []; // the Modal renders nothing while closed, so skip the work
+    if (!searchRegExp) return tabLogs;
+    // String.prototype.search ignores the regex's lastIndex, so the shared global regex is safe here
+    return tabLogs.filter((log) =>
+      searchableFields(log).some((field) => field != null && String(field).search(searchRegExp) !== -1)
+    );
+  }, [showLogger, tabLogs, searchRegExp]);
 
-    return logTypeLogs.filter(log => {
-      if (!searchText) return true;
-      return [log.url, log.requestData, log.responseData, log.message, log.error]
-        .some(field => field != null && searchRegExp.test(String(field)));
-    }).map(log => (log.type === LOG_TYPES[3] ? log : { ...log, message: log.url })) // HTTP rows show the url on the Message line
-      // Newest first (like the export): the list remounts at the top on every open and only renders the
-      // first few rows, so the latest logs must be there rather than at the end of a long list
-      .reverse();
-  }, [logs, logType, searchText]);
-
-  const highlightedText = useCallback(
-    (text: string | object, match: string, style = styles.text) => {
-      text = String(text);
-      match = String(match);
-
-      if (!match) {
-        return <Text style={style}>{text}</Text>;
-      }
-
-      if (typeof text !== 'string' || typeof match !== 'string') {
-        return <Text style={styles.text}>Invalid input</Text>;
-      }
-
-      const regex = new RegExp(escapeRegExp(match), 'gi');
-      const parts = text.split(regex);
-      const matches = text.match(regex);
-      const result = parts.map((part, i) => (
-        <React.Fragment key={i}>
-          {part}
-          {matches && matches[i] && (
-            <Text style={styles.highlightedText}>{matches[i]}</Text>
-          )}
-        </React.Fragment>
-      ));
-
-      return <Text style={style}>{result}</Text>;
-    },
-    [styles.highlightedText, styles.text]
+  const renderItem = useCallback(
+    ({ item }) => <LogRow item={item} searchRegExp={searchRegExp} />,
+    [searchRegExp]
   );
 
   useImperativeHandle(
@@ -136,63 +151,34 @@ const ServerLogger = forwardRef<ServerLoggerHandle>((_, ref) => {
           <Button
             title="Export"
             onPress={onExport}
-            disabled={shouldDisableButtons}
+            disabled={isEmpty}
           />
           <Button
             title="Clear"
-            onPress={onClear}
-            disabled={shouldDisableButtons}
+            onPress={clearLogs}
+            disabled={isEmpty}
           />
         </View>
         <View style={styles.searchContainer}>
           <TextInput
             style={styles.TextInput}
-            onChangeText={text => setSearchText(text)}
+            onChangeText={setSearchText}
             value={searchText}
             placeholder="Search"
           />
         </View>
         <View style={styles.logsContainer}>
+          {/* maintainVisibleContentPosition keeps the rows being read in place when a new log is added at the top (Android: RN 0.72+) */}
           <VirtualizedList
             data={filteredLogs}
-            keyExtractor={(item: any, index: number) => index.toString()}
-            renderItem={({ item }: any) => {
-              const isError = item?.type === LOG_TYPES[2];
-              return (
-                <View style={[styles.logContainer, isError && styles.errorLogContainer]}>
-                  <View>
-                    <Text style={styles.text}>
-                      {moment(item.timestamp).format('HH:mm:ss')}
-                    </Text>
-                    {item?.type !== LOG_TYPES[3] && <Text style={[styles.text, isError && styles.errorText]}>HTTP {item?.type}</Text>}
-                  </View>
-                  <Text style={styles.text}>
-                    Message: {highlightedText(item?.message, searchText)}
-                  </Text>
-                  {!!item?.status && <Text style={styles.text}>
-                    Status: {highlightedText(item?.status, searchText)}
-                  </Text>}
-                  {!!item?.error && <Text style={[styles.text, styles.errorText]}>
-                    Error: {highlightedText(item?.error, searchText, [styles.text, styles.errorText])}
-                  </Text>}
-                  {!!item?.requestData && <Text style={styles.text}>
-                    Request Data: {highlightedText(item?.requestData, searchText)}
-                  </Text>}
-                  {!!item?.responseData && <Text style={styles.text}>
-                    Response Data:{" "}
-                    {highlightedText(item?.responseData, searchText)}
-                  </Text>}
-                </View>
-              );
-            }}
-            getItemCount={(data) => data.length}
-            getItem={(data, index) => data[index]}
+            extraData={searchRegExp}
+            keyExtractor={keyExtractor}
+            renderItem={renderItem}
+            getItemCount={getItemCount}
+            getItem={getItem}
             initialNumToRender={5}
-            ListEmptyComponent={() => (
-              <View style={styles.emptyListContainer}>
-                <Text style={styles.title}>{'No logs in the\npast 60 seconds'}</Text>
-              </View>
-            )}
+            maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
+            ListEmptyComponent={EmptyList}
           />
         </View>
         <View style={styles.footerContainer}>
