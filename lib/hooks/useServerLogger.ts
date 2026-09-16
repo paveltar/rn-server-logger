@@ -8,6 +8,15 @@ import safeStringify from '../utils/safeStringify';
 
 const INITIAL_STATE = { REQUEST: [], RESPONSE: [], ERROR: [], PRINT: [] }
 
+// The URL axios actually requests (baseURL + url + params); never let logging break a request
+const getRequestUrl = (config) => {
+    try {
+        return config ? axios.getUri(config) : '';
+    } catch (e) {
+        return config.url || '';
+    }
+};
+
 const describeRequestError = (error) => {
     const message = error?.message ?? safeStringify(error);
     // axios uses ECONNABORTED for both timeouts (unless transitional.clarifyTimeoutError is set) and 'Request aborted'
@@ -38,7 +47,6 @@ const useServerLogger = () => {
     // Stable and usable from the first commit, so printHelper works even from a parent's componentDidMount
     const writeToLogHelper = useCallback(({ type, responseData, requestData, status, url, message, error }) => {
         if (!isTrackingLogsRef.current) return;
-        const accessTokenIndex = url?.indexOf?.('?accessToken=');
         const log = type === LOG_TYPES[3] ? {
             type,
             timestamp: moment().valueOf(),
@@ -46,7 +54,7 @@ const useServerLogger = () => {
         } : {
             type,
             timestamp: moment().valueOf(),
-            url: accessTokenIndex > -1 ? url.substring(0, accessTokenIndex) : url,
+            url,
             requestData: safeStringify(requestData ?? {}),
             responseData: responseData === undefined ? undefined : safeStringify(responseData),
             status,
@@ -61,7 +69,7 @@ const useServerLogger = () => {
     const requestInterceptorHelper = useCallback((config) => {
         writeToLogHelper({
             type: LOG_TYPES[0],
-            url: `${config.baseURL || ''}${config.url || ''}`,
+            url: getRequestUrl(config),
             requestData: config.data,
             status: 0,
         });
@@ -71,7 +79,7 @@ const useServerLogger = () => {
     const responseInterceptorHelper = useCallback((response) => {
         writeToLogHelper({
             type: LOG_TYPES[1],
-            url: (response.config && response.config.url) || '',
+            url: getRequestUrl(response?.config),
             requestData: response.config && response.config.data,
             responseData: response && response.data,
             status: response && response.status,
@@ -82,7 +90,7 @@ const useServerLogger = () => {
     const responseErrorInterceptorHelper = useCallback((error) => {
         writeToLogHelper({
             type: LOG_TYPES[2],
-            url: error?.config?.url || '',
+            url: getRequestUrl(error?.config),
             requestData: error?.config?.data,
             responseData: error?.response?.data,
             status: error?.response?.status,
