@@ -48,7 +48,7 @@ const App = () => {
 
 `printHelper` accepts any value (strings, objects, errors, ...) and returns it unchanged, so it can wrap an expression: `const user = serverLoggerRef.current?.printHelper(await fetchUser());`
 
-Failed requests appear in the RESPONSE tab, in order with successful ones and marked in red. Every failed request has an `Error` line with the axios error code and message, such as `ERR_BAD_RESPONSE: Request failed with status code 500`, `Timeout: timeout of 5000ms exceeded` or `ERR_NETWORK: Network Error`. When the server answered, the status and the response body (e.g. a 500 with its JSON body) are shown as well.
+Logs are listed newest first. Failed requests appear in the RESPONSE tab, in order with successful ones and marked in red. Every failed request has an `Error` line with the axios error code and message, such as `ERR_BAD_RESPONSE: Request failed with status code 500`, `Timeout: timeout of 5000ms exceeded` or `ERR_NETWORK: Network Error`. When the server answered, the status and the response body (e.g. a 500 with its JSON body) are shown as well.
 
 ## Changes
 #### renderLogTypeButtons function

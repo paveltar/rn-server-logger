@@ -76,7 +76,10 @@ const ServerLogger = forwardRef<ServerLoggerHandle>((_, ref) => {
       if (!searchText) return true;
       return [log.url, log.requestData, log.responseData, log.message, log.error]
         .some(field => field != null && searchRegExp.test(String(field)));
-    }).map(log => (log.type === LOG_TYPES[3] ? log : { ...log, message: log.url })); // HTTP rows show the url on the Message line
+    }).map(log => (log.type === LOG_TYPES[3] ? log : { ...log, message: log.url })) // HTTP rows show the url on the Message line
+      // Newest first (like the export): the list remounts at the top on every open and only renders the
+      // first few rows, so the latest logs must be there rather than at the end of a long list
+      .reverse();
   }, [logs, logType, searchText]);
 
   const highlightedText = useCallback(
