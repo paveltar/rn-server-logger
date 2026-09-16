@@ -1,5 +1,3 @@
-import axios from 'axios';
-
 /** Bodies and printed values longer than this are cut, on screen and in the export. */
 export const MAX_BODY_LENGTH = 64 * 1024;
 
@@ -66,9 +64,12 @@ export const serialize = (value: unknown): string => {
   return truncate(text);
 };
 
+// What axios.isCancel checks, in 0.27 (Cancel) and 1.x (CanceledError); avoids loading axios at runtime
+const isCancel = (error: unknown): boolean => !!(error as { __CANCEL__?: unknown } | null)?.__CANCEL__;
+
 /** One line for a failed request: "Timeout: ...", "Canceled", "ERR_NETWORK: Network Error", ... */
 export const describeError = (error: unknown): string => {
-  if (axios.isCancel(error)) return 'Canceled';
+  if (isCancel(error)) return 'Canceled';
   const { code, message } = (error ?? {}) as { code?: string; message?: string };
   const text = message ?? serialize(error);
   // axios uses ECONNABORTED for both timeouts (unless transitional.clarifyTimeoutError is set) and 'Request aborted'

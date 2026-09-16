@@ -2,6 +2,7 @@ import axios from 'axios';
 import { requestUrl } from '../requestUrl';
 
 const B = 'https://api.test';
+const api = axios.create();
 
 afterEach(() => {
   axios.defaults.baseURL = undefined;
@@ -22,21 +23,27 @@ test.each([
   ['custom serializer', { baseURL: B, url: '/users', params: { page: 2 }, paramsSerializer: { serialize: () => 'custom=1' } }, `${B}/users?custom=1`],
   ['tokens are kept', { baseURL: B, url: '/me?accessToken=SECRET', params: { lang: 'en' } }, `${B}/me?accessToken=SECRET&lang=en`],
 ])('%s', (_name, config, expected) => {
-  expect(requestUrl(config)).toBe(expected);
+  expect(requestUrl(api, config)).toBe(expected);
 });
 
 test('no config or no url gives an empty string', () => {
-  expect(requestUrl(undefined)).toBe('');
-  expect(requestUrl({ method: 'get' })).toBe('');
+  expect(requestUrl(api, undefined)).toBe('');
+  expect(requestUrl(api, { method: 'get' })).toBe('');
 });
 
-test('global axios defaults never leak in', () => {
+test("the instance's own defaults take part, as they do in the request", () => {
+  const own = axios.create({ baseURL: B, params: { apiKey: 'k' } });
+  expect(requestUrl(own, { url: '/users', params: { own: 1 } })).toBe(`${B}/users?apiKey=k&own=1`);
+});
+
+test('defaults of other instances and of the global axios never leak in', () => {
+  axios.create({ baseURL: 'https://other.example.com', params: { other: 1 } });
   axios.defaults.baseURL = 'https://global.example.com';
   axios.defaults.params = { apiKey: 'k' };
-  expect(requestUrl({ url: '/users', params: { own: 1 } })).toBe('/users?own=1');
+  expect(requestUrl(api, { url: '/users', params: { own: 1 } })).toBe('/users?own=1');
 });
 
 test('a serializer that throws falls back to the plain url', () => {
   const config = { url: 'https://api.test/x', params: { a: 1 }, paramsSerializer: { serialize: () => { throw new Error('boom'); } } };
-  expect(requestUrl(config)).toBe('https://api.test/x');
+  expect(requestUrl(api, config)).toBe('https://api.test/x');
 });

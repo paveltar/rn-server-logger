@@ -73,8 +73,11 @@ describe('describeError', () => {
     expect(describeError(new Error('no token'))).toBe('no token');
   });
 
-  test('a canceled request', () => {
+  test('a canceled request, on axios 1.x (CanceledError) and 0.27 (Cancel, marked on the prototype)', () => {
     expect(describeError(new axios.CanceledError('canceled'))).toBe('Canceled');
+    class Cancel { message = 'canceled'; }
+    (Cancel.prototype as { __CANCEL__?: boolean }).__CANCEL__ = true;
+    expect(describeError(new Cancel())).toBe('Canceled');
   });
 
   test('something that is not an error at all', () => {

@@ -27,15 +27,6 @@ const guarded = <A extends unknown[]>(fn: (...args: A) => void) => (...args: A):
 
 const methodOf = (config: AxiosRequestConfig | undefined): string => (config?.method ?? 'get').toUpperCase();
 
-const record = guarded((config: AxiosRequestConfig) => {
-  if (!isTracking()) return;
-  const startedAt = Date.now();
-  const entry: HttpEntry = { id: nextId(), kind: 'http', startedAt, method: methodOf(config), url: requestUrl(config) };
-  if (config.data !== undefined) entry.requestBody = serialize(config.data);
-  pending.set(config, { id: entry.id, startedAt });
-  add(entry);
-});
-
 const complete = guarded((response: AxiosResponse | undefined) => {
   // `response` can be undefined when an interceptor registered earlier returned nothing
   const started = takePending(response?.config);
@@ -45,43 +36,55 @@ const complete = guarded((response: AxiosResponse | undefined) => {
   update(started.id, patch);
 });
 
-const fail = guarded((error: unknown) => {
-  const { config, response } = (error ?? {}) as Partial<AxiosError>;
-  const patch: Partial<HttpEntry> = { error: describeError(error) };
-  if (response?.status !== undefined) patch.status = response.status;
-  if (response?.data !== undefined) patch.responseBody = serialize(response.data);
-  const started = takePending(config);
-  if (started) {
-    update(started.id, { ...patch, durationMs: Date.now() - started.startedAt });
-    return;
-  }
-  // Thrown by another interceptor before the request was recorded: still worth a row.
-  // If that interceptor was registered before attach, the logger already ran first and recorded
-  // the entry; this plain Error carries no config, so this adds a second "(no request config)"
-  // row while the first stays pending. The README's "attach first" advice avoids that order.
-  add({
-    id: nextId(),
-    kind: 'http',
-    startedAt: Date.now(),
-    method: methodOf(config),
-    url: config ? requestUrl(config) : '(no request config)',
-    ...patch,
+// The URL is built by the instance itself (its getUri), so the handlers are created per instance
+const createHandlers = (instance: AxiosInstance) => {
+  const record = guarded((config: AxiosRequestConfig) => {
+    if (!isTracking()) return;
+    const startedAt = Date.now();
+    const entry: HttpEntry = { id: nextId(), kind: 'http', startedAt, method: methodOf(config), url: requestUrl(instance, config) };
+    if (config.data !== undefined) entry.requestBody = serialize(config.data);
+    pending.set(config, { id: entry.id, startedAt });
+    add(entry);
   });
-});
 
-const onRequest = <C extends AxiosRequestConfig>(config: C): C => {
-  record(config);
-  return config;
-};
+  const fail = guarded((error: unknown) => {
+    const { config, response } = (error ?? {}) as Partial<AxiosError>;
+    const patch: Partial<HttpEntry> = { error: describeError(error) };
+    if (response?.status !== undefined) patch.status = response.status;
+    if (response?.data !== undefined) patch.responseBody = serialize(response.data);
+    const started = takePending(config);
+    if (started) {
+      update(started.id, { ...patch, durationMs: Date.now() - started.startedAt });
+      return;
+    }
+    // Thrown by another interceptor before the request was recorded: still worth a row.
+    // If that interceptor was registered before attach, the logger already ran first and recorded
+    // the entry; this plain Error carries no config, so this adds a second "(no request config)"
+    // row while the first stays pending. The README's "attach first" advice avoids that order.
+    add({
+      id: nextId(),
+      kind: 'http',
+      startedAt: Date.now(),
+      method: methodOf(config),
+      url: config ? requestUrl(instance, config) : '(no request config)',
+      ...patch,
+    });
+  });
 
-const onResponse = <R extends AxiosResponse>(response: R): R => {
-  complete(response);
-  return response;
-};
-
-const onError = (error: unknown): Promise<never> => {
-  fail(error);
-  return Promise.reject(error);
+  return {
+    onRequest: <C extends AxiosRequestConfig>(config: C): C => {
+      record(config);
+      return config;
+    },
+    onResponse: <R extends AxiosResponse>(response: R): R => {
+      complete(response);
+      return response;
+    },
+    onError: (error: unknown): Promise<never> => {
+      fail(error);
+      return Promise.reject(error);
+    },
+  };
 };
 
 /**
@@ -90,6 +93,7 @@ const onError = (error: unknown): Promise<never> => {
  */
 export const attach = <T extends AxiosInstance>(instance: T): T => {
   if (!attached.has(instance)) {
+    const { onRequest, onResponse, onError } = createHandlers(instance);
     attached.set(instance, {
       request: instance.interceptors.request.use(onRequest),
       response: instance.interceptors.response.use(onResponse, onError),

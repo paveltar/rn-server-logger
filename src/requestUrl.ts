@@ -1,15 +1,15 @@
-import axios from 'axios';
-import type { AxiosRequestConfig } from 'axios';
+import type { AxiosInstance, AxiosRequestConfig } from 'axios';
 
-// An instance with no defaults: only the request's own baseURL, url, params and serializer take part.
-// axios.getUri on the root instance would merge axios.defaults in. Needs axios >= 0.27 (earlier getUri ignores baseURL).
-const bare = new axios.Axios({});
-
-/** The URL axios actually requests for this config. Never throws. */
-export const requestUrl = (config: AxiosRequestConfig | undefined): string => {
+/**
+ * The URL this instance requests for the config. Never throws.
+ * Request interceptors see the config already merged with the instance defaults, and getUri merges
+ * them once more, which changes nothing: the result is the URL as sent, and no other instance's
+ * defaults take part. Needs axios >= 0.27 (earlier getUri ignores baseURL).
+ */
+export const requestUrl = (instance: Pick<AxiosInstance, 'getUri'>, config: AxiosRequestConfig | undefined): string => {
   if (!config) return '';
   try {
-    return bare.getUri(config) || config.url || '';
+    return instance.getUri(config) || config.url || '';
   } catch {
     return config.url || '';
   }
