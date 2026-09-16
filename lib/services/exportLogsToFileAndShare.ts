@@ -3,18 +3,25 @@
 import Share from 'react-native-share';
 import RNFS from 'react-native-fs';
 import moment from 'moment';
+import { LOG_TYPES } from '../types/types';
 
 const exportLogsToFileAndShare = async (logs) => {
     let txtFile = '';
     logs.sort((a, b) => b.timestamp - a.timestamp).forEach((point) => {
-        const { type, timestamp, url, requestData, responseData, status } = point;
+        const { type, timestamp, url, requestData, responseData, status, message, error } = point;
+        const fields = [
+            ['TYPE', type],
+            ['TIME', moment(timestamp).format('DD-MM-YY HH:mm:ss.SSS')],
+            ...(type === LOG_TYPES[3] ? [['MESSAGE', message]] : [
+                ['URL', url],
+                ['REQUEST DATA', requestData],
+                ['RESPONSE DATA', responseData],
+                ['STATUS', status],
+                ['ERROR', error],
+            ]),
+        ].filter(([, value]) => value !== undefined);
         txtFile += `
-    TYPE: ${type}\n
-    TIME: ${moment(timestamp).format('DD-MM-YY HH:mm:ss.SSS')}\n
-    URL: ${url}\n
-    REQUEST DATA: ${requestData}\n
-    RESPONSE DATA: ${responseData}\n
-    STATUS: ${status}\n
+    ${fields.map(([label, value]) => `${label}: ${value}\n`).join('\n    ')}
     ---------------------------------
     \n
     `;

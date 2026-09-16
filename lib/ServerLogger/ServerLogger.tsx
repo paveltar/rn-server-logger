@@ -23,8 +23,11 @@ import exportLogsToFileAndShare from '../services/exportLogsToFileAndShare';
 import styles from './styles';
 import LogTypeButtonGroup from './LogTypeButtons';
 import { LOG_TYPES } from '../types/types';
+import type { ServerLoggerHandle } from '../types/types';
 
-const ServerLogger = forwardRef((_, ref) => {
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const ServerLogger = forwardRef<ServerLoggerHandle>((_, ref) => {
   const [logs, isTrackingLogs, toggleTracking, clearLogs, printHelper] = useServerLogger();
   const [logType, setLogType] = useState<string>('REQUEST');
   const [showLogger, setShowLogger] = useState<boolean>(false);
@@ -68,16 +71,13 @@ const ServerLogger = forwardRef((_, ref) => {
   );
 
   const filteredLogs = useMemo(() => {
-    const searchRegExp = new RegExp(searchText, 'i');
+    const searchRegExp = new RegExp(escapeRegExp(searchText), 'i');
     const logTypeLogs = logs[logType] || [];
 
     return logTypeLogs.filter(log => {
-      return (
-        searchRegExp.test(log.url) ||
-        searchRegExp.test(log.requestData) ||
-        searchRegExp.test(log.responseData) ||
-        searchRegExp.test(log.message)
-      );
+      if (!searchText) return true;
+      return [log.url, log.requestData, log.responseData, log.message, log.error]
+        .some(field => field != null && searchRegExp.test(String(field)));
     }).map(log => (log.type === LOG_TYPES[3] ? log : {
       id: log.timestamp,
       message: log.url,
@@ -86,6 +86,7 @@ const ServerLogger = forwardRef((_, ref) => {
       requestData: log.requestData,
       responseData: log.responseData,
       status: log.status,
+      error: log.error,
     }));
   }, [logs, logType, searchText]);
 
@@ -102,7 +103,7 @@ const ServerLogger = forwardRef((_, ref) => {
         return <Text style={styles.text}>Invalid input</Text>;
       }
 
-      const regex = new RegExp(match, 'gi');
+      const regex = new RegExp(escapeRegExp(match), 'gi');
       const parts = text.split(regex);
       const matches = text.match(regex);
       const result = parts.map((part, i) => (
@@ -124,13 +125,11 @@ const ServerLogger = forwardRef((_, ref) => {
     () => {
       return { printHelper };
     },
-    []
+    [printHelper]
   );
-  
 
   return (
     <Modal
-      ref={ref}
       visible={showLogger}
       animationType="fade"
       onRequestClose={onDismiss}
@@ -178,6 +177,9 @@ const ServerLogger = forwardRef((_, ref) => {
                 </Text>
                 {!!item?.status && <Text style={styles.text}>
                   Status: {highlightedText(item?.status, searchText)}
+                </Text>}
+                {!!item?.error && <Text style={styles.text}>
+                  Error: {highlightedText(item?.error, searchText)}
                 </Text>}
                 {!!item?.requestData && <Text style={styles.text}>
                   Request Data: {highlightedText(item?.requestData, searchText)}

@@ -12,17 +12,19 @@ add the dependency to your package.json file:
 ```shell
 yarn add react-native-shake@5.1.1 react-native-fs react-native-share axios-inherit moment && cd ios && pod install && cd .. 
 ```
-``` 
+
 #### 2. Add the following code at the top of the file, after importing axios, before the first usage of axios.create:
-```shell
+```js
 const axiosInherit = require('axios-inherit');
 axiosInherit(axios);
 ```
 
 #### 3.Add the ServerLogger component to your App component and make sure to only render it in the test environment, for example:
-```shell
+```tsx
 
-export const serverLoggerRef = React.createRef<{printHelper: (message: string) => void}>()
+import ServerLogger, { ServerLoggerHandle } from 'rn-server-logger';
+
+export const serverLoggerRef = React.createRef<ServerLoggerHandle>()
 
 const App = () => {
   return (
@@ -42,6 +44,10 @@ const App = () => {
 };
 
 ```
+
+`printHelper` accepts any value (strings, objects, errors, ...) and returns it unchanged, so it can wrap an expression: `const user = serverLoggerRef.current?.printHelper(await fetchUser());`
+
+Failed requests appear under ERROR with the status and server response body (e.g. a 500 with its JSON body). Requests that got no response show an `Error` line instead, such as `Timeout: timeout of 5000ms exceeded` or `ERR_NETWORK: Network Error`.
 
 ## Changes
 #### renderLogTypeButtons function

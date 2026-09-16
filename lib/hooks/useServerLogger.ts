@@ -4,13 +4,22 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import axios from 'axios';
 import moment from 'moment';
 import { LOG_TYPES, Log, LoggerState } from "../types/types";
+import safeStringify from '../utils/safeStringify';
 
 const INITIAL_STATE = { REQUEST: [], RESPONSE: [], ERROR: [], PRINT: [] }
+
+const describeRequestError = (error) => {
+    const message = error?.message ?? safeStringify(error);
+    // axios uses ECONNABORTED for both timeouts (unless transitional.clarifyTimeoutError is set) and 'Request aborted'
+    const isTimeout = error?.code === 'ETIMEDOUT' || (error?.code === 'ECONNABORTED' && message !== 'Request aborted');
+    if (isTimeout) return `Timeout: ${message}`;
+    return error?.code ? `${error.code}: ${message}` : message;
+};
 
 const useServerLogger = () => {
     const requestInterceptorRef = useRef();
     const responseInterceptorRef = useRef();
-    const writeToLogHelperRef = useRef();
+    const isTrackingLogsRef = useRef(true);
     const [isTrackingLogs, setIsTrackingLogs] = useState(true);
     const [{ REQUEST, RESPONSE, ERROR, PRINT }, setLogs] = useState(INITIAL_STATE);
 
@@ -26,27 +35,31 @@ const useServerLogger = () => {
         };
     }, []);
 
-    useEffect(() => {
-        writeToLogHelperRef.current = ({ type, responseData, requestData, status, url, message }) => {
-            const accessTokenIndex = url?.indexOf?.('?accessToken=');
-            if (isTrackingLogs) {
-                setLogs((prevState) => ({
-                    ...prevState,
-                    [type]: [...prevState[type], type === LOG_TYPES[3] ? {message, type, timestamp: moment().valueOf()} : {
-                        type,
-                        timestamp: moment().valueOf(),
-                        url: accessTokenIndex > -1 ? url.substring(0, accessTokenIndex) : url,
-                        requestData: typeof requestData === 'string' ? requestData : JSON.stringify(requestData || {}, null, 2),
-                        responseData: JSON.stringify(responseData || {}, null, 2),
-                        status,
-                    }],
-                }));
-            }
+    // Stable and usable from the first commit, so printHelper works even from a parent's componentDidMount
+    const writeToLogHelper = useCallback(({ type, responseData, requestData, status, url, message, error }) => {
+        if (!isTrackingLogsRef.current) return;
+        const accessTokenIndex = url?.indexOf?.('?accessToken=');
+        const log = type === LOG_TYPES[3] ? {
+            type,
+            timestamp: moment().valueOf(),
+            message: safeStringify(message),
+        } : {
+            type,
+            timestamp: moment().valueOf(),
+            url: accessTokenIndex > -1 ? url.substring(0, accessTokenIndex) : url,
+            requestData: safeStringify(requestData ?? {}),
+            responseData: responseData === undefined ? undefined : safeStringify(responseData),
+            status,
+            error,
         };
-    }, [isTrackingLogs]);
+        setLogs((prevState) => ({
+            ...prevState,
+            [type]: [...prevState[type], log],
+        }));
+    }, []);
 
     const requestInterceptorHelper = useCallback((config) => {
-        writeToLogHelperRef.current({
+        writeToLogHelper({
             type: LOG_TYPES[0],
             url: `${config.baseURL || ''}${config.url || ''}`,
             requestData: config.data,
@@ -56,7 +69,7 @@ const useServerLogger = () => {
     }, []);
 
     const responseInterceptorHelper = useCallback((response) => {
-        writeToLogHelperRef.current({
+        writeToLogHelper({
             type: LOG_TYPES[1],
             url: (response.config && response.config.url) || '',
             requestData: response.config && response.config.data,
@@ -67,25 +80,26 @@ const useServerLogger = () => {
     }, []);
 
     const responseErrorInterceptorHelper = useCallback((error) => {
-        writeToLogHelperRef.current({
+        writeToLogHelper({
             type: LOG_TYPES[2],
-            url: error.config && error.config.url || '',
-            requestData: error.config && error.config.data,
-            responseData: error && error.data,
-            status: error && error.status,
+            url: error?.config?.url || '',
+            requestData: error?.config?.data,
+            responseData: error?.response?.data,
+            status: error?.response?.status,
+            error: describeRequestError(error),
         });
         return Promise.reject(error);
     }, []);
 
     const printHelper = useCallback((message) => {
-        writeToLogHelperRef.current({
-            type: LOG_TYPES[3],
-            message: typeof message === 'string' ? message : JSON.stringify(message, null, 4)
-        });
+        writeToLogHelper({ type: LOG_TYPES[3], message });
         return message;
     }, []);
 
-    const toggleTracking = (value) => setIsTrackingLogs(value);
+    const toggleTracking = (value) => {
+        isTrackingLogsRef.current = value;
+        setIsTrackingLogs(value);
+    };
 
     const clearLogs = () => setLogs(INITIAL_STATE);
 
