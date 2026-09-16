@@ -109,6 +109,7 @@ export const ServerLogger: React.FC = () => {
           placeholder="Search"
           autoCapitalize="none"
           autoCorrect={false}
+          underlineColorAndroid="transparent"
         />
         <View style={styles.filters}>
           {FILTER_NAMES.map((name) => (
