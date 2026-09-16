@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "target": "es2020",
+    "noEmit": true,
+    "declaration": false,
+    "types": ["jest"],
+    "rootDir": "."
+  },
+  "include": ["src", "__mocks__"],
+  "exclude": []
+}
