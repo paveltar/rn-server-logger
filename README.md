@@ -47,7 +47,7 @@ const App = () => {
 
 `printHelper` accepts any value (strings, objects, errors, ...) and returns it unchanged, so it can wrap an expression: `const user = serverLoggerRef.current?.printHelper(await fetchUser());`
 
-Failed requests appear under ERROR with the status and server response body (e.g. a 500 with its JSON body). Requests that got no response show an `Error` line instead, such as `Timeout: timeout of 5000ms exceeded` or `ERR_NETWORK: Network Error`.
+Failed requests appear in the RESPONSE tab, in order with successful ones and marked in red, with the status and server response body (e.g. a 500 with its JSON body). Requests that got no response show an `Error` line instead, such as `Timeout: timeout of 5000ms exceeded` or `ERR_NETWORK: Network Error`.
 
 ## Changes
 #### renderLogTypeButtons function

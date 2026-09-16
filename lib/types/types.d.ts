@@ -35,8 +35,8 @@ interface Logger {
 interface LoggerState {
     logs: {
         REQUEST: Log[];
+        // includes ERROR logs, listed alongside responses
         RESPONSE: Log[];
-        ERROR: Log[];
         PRINT: PrintLog[];
     };
     isTrackingLogs: boolean;

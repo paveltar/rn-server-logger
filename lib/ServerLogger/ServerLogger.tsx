@@ -54,18 +54,16 @@ const ServerLogger = forwardRef<ServerLoggerHandle>((_, ref) => {
         exportLogsToFileAndShare([
           ...logs.REQUEST,
           ...logs.RESPONSE,
-          ...logs.ERROR,
           ...logs.PRINT,
         ]),
       300
     );
-  }, [logs.REQUEST, logs.RESPONSE, logs.ERROR, logs.PRINT]);
+  }, [logs.REQUEST, logs.RESPONSE, logs.PRINT]);
 
   const shouldDisableButtons = useMemo(
     () =>
       logs.REQUEST.length === 0 &&
       logs.RESPONSE.length === 0 &&
-      logs.ERROR.length === 0 &&
       logs.PRINT.length === 0,
     [logs]
   );
@@ -91,12 +89,12 @@ const ServerLogger = forwardRef<ServerLoggerHandle>((_, ref) => {
   }, [logs, logType, searchText]);
 
   const highlightedText = useCallback(
-    (text: string | object, match: string) => {
+    (text: string | object, match: string, style = styles.text) => {
       text = String(text);
       match = String(match);
 
       if (!match) {
-        return <Text style={styles.text}>{text}</Text>;
+        return <Text style={style}>{text}</Text>;
       }
 
       if (typeof text !== 'string' || typeof match !== 'string') {
@@ -115,7 +113,7 @@ const ServerLogger = forwardRef<ServerLoggerHandle>((_, ref) => {
         </React.Fragment>
       ));
 
-      return <Text style={styles.text}>{result}</Text>;
+      return <Text style={style}>{result}</Text>;
     },
     [styles.highlightedText, styles.text]
   );
@@ -164,32 +162,35 @@ const ServerLogger = forwardRef<ServerLoggerHandle>((_, ref) => {
           <VirtualizedList
             data={filteredLogs}
             keyExtractor={(item: any, index: number) => index.toString()}
-            renderItem={({ item }: any) => (
-              <View style={styles.logContainer}>
-                <View>
+            renderItem={({ item }: any) => {
+              const isError = item?.type === LOG_TYPES[2];
+              return (
+                <View style={[styles.logContainer, isError && styles.errorLogContainer]}>
+                  <View>
+                    <Text style={styles.text}>
+                      {moment(item.timestamp).format('HH:mm:ss')}
+                    </Text>
+                    {item?.type !== LOG_TYPES[3] && <Text style={[styles.text, isError && styles.errorText]}>HTTP {item?.type}</Text>}
+                  </View>
                   <Text style={styles.text}>
-                    {moment(item.timestamp).format('HH:mm:ss')}
+                    Message: {highlightedText(item?.message, searchText)}
                   </Text>
-                  {item?.type !== LOG_TYPES[3] && <Text style={styles.text}>HTTP {item?.type}</Text>}
+                  {!!item?.status && <Text style={styles.text}>
+                    Status: {highlightedText(item?.status, searchText)}
+                  </Text>}
+                  {!!item?.error && <Text style={[styles.text, styles.errorText]}>
+                    Error: {highlightedText(item?.error, searchText, [styles.text, styles.errorText])}
+                  </Text>}
+                  {!!item?.requestData && <Text style={styles.text}>
+                    Request Data: {highlightedText(item?.requestData, searchText)}
+                  </Text>}
+                  {!!item?.responseData && <Text style={styles.text}>
+                    Response Data:{" "}
+                    {highlightedText(item?.responseData, searchText)}
+                  </Text>}
                 </View>
-                <Text style={styles.text}>
-                  Message: {highlightedText(item?.message, searchText)}
-                </Text>
-                {!!item?.status && <Text style={styles.text}>
-                  Status: {highlightedText(item?.status, searchText)}
-                </Text>}
-                {!!item?.error && <Text style={styles.text}>
-                  Error: {highlightedText(item?.error, searchText)}
-                </Text>}
-                {!!item?.requestData && <Text style={styles.text}>
-                  Request Data: {highlightedText(item?.requestData, searchText)}
-                </Text>}
-                {!!item?.responseData && <Text style={styles.text}>
-                  Response Data:{" "}
-                  {highlightedText(item?.responseData, searchText)}
-                </Text>}
-              </View>
-            )}
+              );
+            }}
             getItemCount={(data) => data.length}
             getItem={(data, index) => data[index]}
             initialNumToRender={5}

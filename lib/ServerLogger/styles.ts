@@ -43,6 +43,13 @@ const styles = StyleSheet.create({
         borderRadius: 5,
         marginHorizontal: 5
     },
+    activeLogTypeButtonContainer: {
+        backgroundColor: '#444',
+        borderColor: '#444',
+    },
+    activeLogTypeButtonText: {
+        color: '#fff',
+    },
     logsContainer: {
         flex: .8,
     },
@@ -76,6 +83,13 @@ const styles = StyleSheet.create({
     text: {
         fontSize: 10,
         color: '#444'
+    },
+    errorLogContainer: {
+        borderColor: '#d33',
+        borderWidth: 2,
+    },
+    errorText: {
+        color: '#d33',
     },
     highlightedText: {
         fontSize: 10,

@@ -6,7 +6,7 @@ import moment from 'moment';
 import { LOG_TYPES, Log, LoggerState } from "../types/types";
 import safeStringify from '../utils/safeStringify';
 
-const INITIAL_STATE = { REQUEST: [], RESPONSE: [], ERROR: [], PRINT: [] }
+const INITIAL_STATE = { REQUEST: [], RESPONSE: [], PRINT: [] }
 
 // The URL axios actually requests (baseURL + url + params); never let logging break a request
 const getRequestUrl = (config) => {
@@ -30,7 +30,7 @@ const useServerLogger = () => {
     const responseInterceptorRef = useRef();
     const isTrackingLogsRef = useRef(true);
     const [isTrackingLogs, setIsTrackingLogs] = useState(true);
-    const [{ REQUEST, RESPONSE, ERROR, PRINT }, setLogs] = useState(INITIAL_STATE);
+    const [{ REQUEST, RESPONSE, PRINT }, setLogs] = useState(INITIAL_STATE);
 
     useEffect(() => {
         // Set up interceptors
@@ -60,9 +60,11 @@ const useServerLogger = () => {
             status,
             error,
         };
+        // Failed calls are listed with the responses, so they show up in order next to successful ones
+        const listType = type === LOG_TYPES[2] ? LOG_TYPES[1] : type;
         setLogs((prevState) => ({
             ...prevState,
-            [type]: [...prevState[type], log],
+            [listType]: [...prevState[listType], log],
         }));
     }, []);
 
@@ -111,7 +113,7 @@ const useServerLogger = () => {
 
     const clearLogs = () => setLogs(INITIAL_STATE);
 
-    return [{ REQUEST, RESPONSE, ERROR, PRINT }, isTrackingLogs, toggleTracking, clearLogs, printHelper]
+    return [{ REQUEST, RESPONSE, PRINT }, isTrackingLogs, toggleTracking, clearLogs, printHelper]
 };
 
 export default useServerLogger;
