@@ -15,7 +15,6 @@ yarn add https://github.com/paveltar/rn-server-logger.git#v2.1.0 react-native-sh
 
 Requirements:
 
-- React Native with the new architecture.
 - react-native-shake 6.10.0 or newer. It is loaded only once the logger is attached, so the
   accelerometer never runs in builds that do not attach.
 - react-native-safe-area-context 4 or newer. Most apps already have it.
@@ -110,7 +109,7 @@ including tokens, are logged as sent.
    needed either: it renders nothing until `attach`.
 5. Remove `axios-inherit`, `react-native-fs`, `react-native-share` and `moment` if nothing else uses
    them, then run `pod install` again so the two native modules are unlinked.
-6. Check the requirements above: the new architecture, axios 0.27 or newer and React 18 or newer.
+6. Check the requirements above: axios 0.27 or newer and React 18 or newer.
 
 What testers will notice: the REQUEST, RESPONSE, ERROR and PRINT tabs are gone. Each call is one row
 showing its status and duration, and the filters are All, HTTP, Errors and Print. Export no longer

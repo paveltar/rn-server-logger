@@ -34,6 +34,7 @@
     "@types/react": "^19.2.0",
     "@types/react-test-renderer": "^19.0.0",
     "axios": "^1.20.0",
+    "axios-0.27": "npm:axios@0.27.2",
     "babel-jest": "^29.7.0",
     "jest": "^29.7.0",
     "react": "19.2.0",
@@ -44,10 +45,26 @@
     "typescript": "^5.9.0"
   },
   "jest": {
-    "preset": "react-native",
-    "testPathIgnorePatterns": [
-      "/node_modules/",
-      "/dist/"
+    "projects": [
+      {
+        "displayName": "axios 1.x",
+        "preset": "react-native",
+        "testPathIgnorePatterns": [
+          "/node_modules/",
+          "/dist/"
+        ]
+      },
+      {
+        "displayName": "axios 0.27",
+        "preset": "react-native",
+        "testPathIgnorePatterns": [
+          "/node_modules/",
+          "/dist/"
+        ],
+        "moduleNameMapper": {
+          "^axios$": "axios-0.27"
+        }
+      }
     ]
   }
 }
