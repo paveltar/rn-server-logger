@@ -6,7 +6,7 @@ import { clear, getEntries, isEnabled, isFailed, isTracking, setTracking, subscr
 import type { LogEntry } from './store';
 import { shareEntries } from './exportText';
 import { EntryRow } from './EntryRow';
-import { styles } from './styles';
+import { PLACEHOLDER_COLOR, styles } from './styles';
 
 const FILTERS = {
   All: () => true,
@@ -107,6 +107,7 @@ export const ServerLogger: React.FC = () => {
           value={searchText}
           onChangeText={setSearchText}
           placeholder="Search"
+          placeholderTextColor={PLACEHOLDER_COLOR}
           autoCapitalize="none"
           autoCorrect={false}
           underlineColorAndroid="transparent"

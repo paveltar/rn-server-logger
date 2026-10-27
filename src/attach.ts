@@ -6,14 +6,17 @@ import { requestUrl } from './requestUrl';
 
 type Pending = { id: number; startedAt: number };
 
-// axios hands the same config object to the request interceptor and back on response.config / error.config
-const pending = new WeakMap<object, Pending>();
+// The request is tagged on its config, which comes back on response.config / error.config. An
+// interceptor that runs after the logger may return a copy of the config ({ ...config }); a symbol key
+// is copied along with it, yet never shows up in Object.keys or JSON. A request is completed once.
+const TAG = Symbol('rn-server-logger');
+type Tagged = { [TAG]?: Pending };
+const open = new WeakSet<Pending>();
 const attached = new WeakMap<AxiosInstance, { request: number; response: number }>();
 
 const takePending = (config: object | undefined): Pending | undefined => {
-  const started = config && pending.get(config);
-  if (started) pending.delete(config);
-  return started || undefined;
+  const started = (config as Tagged | undefined)?.[TAG];
+  return started && open.delete(started) ? started : undefined;
 };
 
 // Logging must never break a request: anything thrown inside the logger is swallowed
@@ -43,7 +46,9 @@ const createHandlers = (instance: AxiosInstance) => {
     const startedAt = Date.now();
     const entry: HttpEntry = { id: nextId(), kind: 'http', startedAt, method: methodOf(config), url: requestUrl(instance, config) };
     if (config.data !== undefined) entry.requestBody = serialize(config.data);
-    pending.set(config, { id: entry.id, startedAt });
+    const started: Pending = { id: entry.id, startedAt };
+    (config as Tagged)[TAG] = started;
+    open.add(started);
     add(entry);
   });
 

@@ -89,10 +89,11 @@ The footer has a Tracking switch (stop and resume recording), Clear, and Export.
 share sheet with every recorded entry as text, newest first.
 
 Limits: the last 500 entries are kept; bodies and printed values longer than 64 KB are cut with a
-`[truncated, N KB total]` marker; an export is cut to the newest entries that fit the share sheet
-(about 250,000 characters, Android's limit) and says how many older entries were left out; if the
-share sheet cannot be opened, an alert says so. Nothing is ever redacted: query strings, including
-tokens, are logged as sent.
+`[truncated, N KB total]` marker; binary bodies (ArrayBuffer, typed arrays, Blob) show only their
+type and size, such as `[Uint8Array, 1.2 MB]`; an export is cut to the newest entries that fit the
+share sheet (about 250,000 characters, Android's limit) and says how many older entries were left
+out; if the share sheet cannot be opened, an alert says so. Nothing is ever redacted: query strings,
+including tokens, are logged as sent.
 
 ## Migrating from 1.x
 

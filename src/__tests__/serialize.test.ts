@@ -45,6 +45,25 @@ describe('serialize', () => {
     expect(JSON.parse(text)).toEqual({ map: [['k', 1]], set: [1, 2], big: '10n', sym: 'Symbol(s)' });
   });
 
+  describe('binary data shows as its type and size', () => {
+    // tsconfig has no DOM types; jest's Node environment provides Blob, React Native its own
+    const { Blob } = globalThis as unknown as { Blob: new (parts: string[], options?: { type?: string }) => object };
+
+    test.each([
+      ['an ArrayBuffer', new ArrayBuffer(8), '[ArrayBuffer, 8 B]'],
+      ['a typed array', new Uint8Array(1536), '[Uint8Array, 1.5 KB]'],
+      ['a DataView', new DataView(new ArrayBuffer(2 * 1024 * 1024)), '[DataView, 2 MB]'],
+      ['a Blob with a type', new Blob(['abc'], { type: 'text/plain' }), '[Blob text/plain, 3 B]'],
+      ['a Blob without a type', new Blob(['abcd']), '[Blob, 4 B]'],
+    ])('%s', (_name, value, expected) => {
+      expect(serialize(value)).toBe(expected);
+    });
+
+    test('inside an object', () => {
+      expect(JSON.parse(serialize({ name: 'scan.pdf', file: new Uint8Array(3) }))).toEqual({ name: 'scan.pdf', file: '[Uint8Array, 3 B]' });
+    });
+  });
+
   test('output longer than MAX_BODY_LENGTH is cut with a marker', () => {
     const text = serialize('x'.repeat(100 * 1024));
     expect(text.length).toBeLessThan(MAX_BODY_LENGTH + 100);

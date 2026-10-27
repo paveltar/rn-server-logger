@@ -142,6 +142,30 @@ test('a response interceptor registered earlier that returns nothing does not br
   expect(latest().status).toBeUndefined();
 });
 
+// Registered before attach, these interceptors run after the logger has recorded the request
+test.each([
+  ['spread', (config: InternalAxiosRequestConfig) => ({ ...config })],
+  ['Object.assign', (config: InternalAxiosRequestConfig) => Object.assign({}, config)],
+])('a copy of the config made by a later interceptor (%s) still completes the row', async (_name, copy) => {
+  const copying = axios.create({ baseURL: 'https://api.test' });
+  copying.interceptors.request.use(copy);
+  attach(copying);
+  await call(copying, 'ok');
+  await call(copying, '500');
+  const [failed, ok] = getEntries() as HttpEntry[];
+  expect(ok.status).toBe(200);
+  expect(typeof ok.durationMs).toBe('number');
+  expect(failed.status).toBe(500);
+  expect(failed.error).toBe('ERR_BAD_RESPONSE: Request failed with status code 500');
+  expect(typeof failed.durationMs).toBe('number');
+});
+
+test('the logger adds no visible keys to the config', async () => {
+  const without = await axios.create({ baseURL: 'https://api.test' }).get('/ok', { adapter: adapter('ok') });
+  const withLogger = await api.get('/ok', { adapter: adapter('ok') });
+  expect(Object.keys(withLogger.config).sort()).toEqual(Object.keys(without.config).sort());
+});
+
 test('an error thrown by another request interceptor still gets a row', async () => {
   api.interceptors.request.use(() => { throw new Error('no token'); });
   await call(api, 'ok');

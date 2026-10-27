@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, Share, TouchableOpacity } from 'react-native';
+import { Modal, Share, StyleSheet, Text, TextInput, TouchableOpacity } from 'react-native';
 import TestRenderer, { act } from 'react-test-renderer';
 import type { ReactTestInstance, ReactTestRenderer } from 'react-test-renderer';
 import { ServerLogger } from '../ServerLogger';
@@ -141,4 +141,20 @@ test('close hides the modal', async () => {
   await act(async () => shake());
   await press('close');
   expect(renderer.root.findByType(Modal).props.visible).toBe(false);
+});
+
+// Android draws text without a colour in the theme's colour, which a dark theme makes white on this white viewer
+test('every text has an explicit colour, so a dark system theme cannot hide it', async () => {
+  await act(async () => shake());
+  for (const row of rows()) await act(async () => row.props.onPress());
+  const colourOf = (node: ReactTestInstance) => StyleSheet.flatten(node.props.style)?.color;
+  // Nested Text inherits the colour of the Text around it
+  const coloured = (node: ReactTestInstance | null): boolean =>
+    !!node && ((node.type === Text && !!colourOf(node)) || coloured(node.parent));
+  const texts = renderer.root.findAllByType(Text);
+  expect(texts.length).toBeGreaterThan(10);
+  expect(texts.filter((node) => !coloured(node)).map((node) => textOf(node.props))).toEqual([]);
+  const search = renderer.root.findByType(TextInput);
+  expect(colourOf(search)).toBeDefined();
+  expect(search.props.placeholderTextColor).toBeDefined();
 });
