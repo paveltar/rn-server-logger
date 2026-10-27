@@ -10,7 +10,7 @@ Install it from this repository, pinned to a tag. The `rn-server-logger` package
 unrelated package (upstream's own 2.0.0, with a different API), so do not `yarn add rn-server-logger`.
 
 ```shell
-yarn add https://github.com/paveltar/rn-server-logger.git#v2.1.0 react-native-shake@^6.10.0 react-native-safe-area-context react-native-share && cd ios && pod install && cd ..
+yarn add https://github.com/paveltar/rn-server-logger.git#v2.2.0 react-native-shake@^6.10.0 react-native-safe-area-context react-native-share && cd ios && pod install && cd ..
 ```
 
 Requirements:
