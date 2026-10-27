@@ -7,6 +7,10 @@ import { add, clear, enable, getEntries, isTracking, nextId, setTracking } from 
 import type { HttpEntry, PrintEntry } from '../store';
 
 const { shake } = jest.requireMock('react-native-shake') as { shake: () => void };
+// A plain require gets the same mock instance the code under test gets (jest.requireMock would not)
+const rnShare = (require('react-native-share') as { default: { open: jest.Mock } }).default;
+// Node's Buffer decodes the shared file; tsconfig.test.json has only jest types, so declare the slice used here
+declare const Buffer: { from(text: string, encoding: 'base64'): { toString(encoding: 'utf8'): string } };
 
 const http = (over: Partial<HttpEntry> = {}): HttpEntry => ({
   id: nextId(), kind: 'http', startedAt: Date.now(), method: 'GET', url: 'https://api.test/users', status: 200, durationMs: 12, ...over,
@@ -99,20 +103,23 @@ test('tap expands a row to show the bodies, tap again collapses it', async () =>
   expect(screen()).not.toContain('server exploded');
 });
 
-test('export shares every entry even with a filter and search active, after closing the modal', async () => {
+test('export shares every entry as a file even with a filter and search active, after closing the modal', async () => {
   jest.useFakeTimers();
-  const share = jest.spyOn(Share, 'share').mockResolvedValue({ action: Share.sharedAction });
+  const share = jest.spyOn(Share, 'share');
+  rnShare.open.mockClear();
   await act(async () => shake());
   await press('filter-Errors');
   await type('boom');
   await press('export');
   expect(renderer.root.findByType(Modal).props.visible).toBe(false);
   await act(async () => { jest.advanceTimersByTime(300); });
-  expect(share).toHaveBeenCalledTimes(1);
-  const { message } = share.mock.calls[0][0] as { message: string };
-  expect(message).toContain('https://api.test/latest');
-  expect(message).toContain('https://api.test/first');
-  expect(message).toContain('hello world');
+  expect(share).not.toHaveBeenCalled();
+  expect(rnShare.open).toHaveBeenCalledTimes(1);
+  const { url } = rnShare.open.mock.calls[0][0] as { url: string };
+  const text = Buffer.from(url.replace('data:text/plain;base64,', ''), 'base64').toString('utf8');
+  expect(text).toContain('https://api.test/latest');
+  expect(text).toContain('https://api.test/first');
+  expect(text).toContain('hello world');
   share.mockRestore();
   jest.useRealTimers();
 });

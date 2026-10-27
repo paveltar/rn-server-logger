@@ -1,7 +1,7 @@
 # rn-server-logger
 
 A React Native module for testers: records every axios call the app makes, shows them in-app (shake
-the device), and exports them as text. One row per call: method, URL, status, duration, request and
+the device), and exports them as a text file. One row per call: method, URL, status, duration, request and
 response bodies. Anything you `print` appears in the same timeline.
 
 ## Install
@@ -10,7 +10,7 @@ Install it from this repository, pinned to a tag. The `rn-server-logger` package
 unrelated package (upstream's own 2.0.0, with a different API), so do not `yarn add rn-server-logger`.
 
 ```shell
-yarn add https://github.com/paveltar/rn-server-logger.git#v2.1.0 react-native-shake@^6.10.0 react-native-safe-area-context && cd ios && pod install && cd ..
+yarn add https://github.com/paveltar/rn-server-logger.git#v2.1.0 react-native-shake@^6.10.0 react-native-safe-area-context react-native-share && cd ios && pod install && cd ..
 ```
 
 Requirements:
@@ -19,6 +19,8 @@ Requirements:
 - react-native-shake 6.10.0 or newer. It is loaded only once the logger is attached, so the
   accelerometer never runs in builds that do not attach.
 - react-native-safe-area-context 4 or newer. Most apps already have it.
+- react-native-share 12 or newer, optional. With it, Export shares a `.txt` file; without it, Export
+  shares the log as plain text. It is loaded only when Export is pressed.
 - axios 0.27 or newer. The library never loads axios itself: it only uses the instance you attach,
   so the app keeps a single axios copy in the bundle.
 - React 18 or newer.
@@ -86,13 +88,15 @@ and response bodies and the error text. Failed calls are red. Filter by All, HTT
 and search across URLs, bodies, status codes and printed text.
 
 The footer has a Tracking switch (stop and resume recording), Clear, and Export. Export opens the
-share sheet with every recorded entry as text, newest first.
+share sheet with every recorded entry, newest first, as a file named like
+`server-logs_16-09-26_22-17-26.txt`. The file is written to the app's private cache. Without
+react-native-share, Export shares the same text as a message instead.
 
 Limits: the last 500 entries are kept; bodies and printed values longer than 64 KB are cut with a
-`[truncated, N KB total]` marker; an export is cut to the newest entries that fit the share sheet
-(about 250,000 characters, Android's limit) and says how many older entries were left out; if the
-share sheet cannot be opened, an alert says so. Nothing is ever redacted: query strings, including
-tokens, are logged as sent.
+`[truncated, N KB total]` marker; the file export holds every entry, while the plain-text fallback is
+cut to the newest entries that fit the share sheet (about 250,000 characters, Android's limit) and
+says how many older entries were left out; if the share sheet cannot be opened, an alert says so.
+Nothing is ever redacted: query strings, including tokens, are logged as sent.
 
 ## Migrating from 1.x
 
@@ -107,11 +111,11 @@ tokens, are logged as sent.
    and drop the ref. No guard is needed: it does nothing until `attach`.
 4. `import { ServerLogger } from 'rn-server-logger'` (named export, no props, no ref). No guard is
    needed either: it renders nothing until `attach`.
-5. Remove `axios-inherit`, `react-native-fs`, `react-native-share` and `moment` if nothing else uses
-   them, then run `pod install` again so the two native modules are unlinked.
+5. Keep `react-native-share`, upgraded to 12 or newer, so Export keeps sharing a file. Remove
+   `axios-inherit`, `react-native-fs` and `moment` if nothing else uses them, then run `pod install`
+   again so react-native-fs is unlinked.
 6. Check the requirements above: the new architecture, axios 0.27 or newer and React 18 or newer.
 
 What testers will notice: the REQUEST, RESPONSE, ERROR and PRINT tabs are gone. Each call is one row
-showing its status and duration, and the filters are All, HTTP, Errors and Print. Export no longer
-writes a `logs.txt` file; it opens the share sheet with the log as text, cut to about 250,000
-characters (see the limits above).
+showing its status and duration, and the filters are All, HTTP, Errors and Print. Export still shares
+a `.txt` file, now named with the export time instead of `logs.txt`.

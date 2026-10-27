@@ -3180,6 +3180,11 @@ react-native-shake@6.10.0:
   resolved "https://registry.yarnpkg.com/react-native-shake/-/react-native-shake-6.10.0.tgz#d81b3d000aa88450d9e89829e6024c1720d07260"
   integrity sha512-L8LQimvIcTH2nVHCrIyYb+NdyvLrPvhzO9E28ZKnCbhvPrNAD8NbplPlj0fS/KrnFagUy2lL+DAbDHImSGZhTA==
 
+react-native-share@12.3.1:
+  version "12.3.1"
+  resolved "https://registry.yarnpkg.com/react-native-share/-/react-native-share-12.3.1.tgz#beb36cf2d589335f93adc6f22bd34c8a950964b3"
+  integrity sha512-mRVRie0qKbtj+jWqJ2POPkeSd8SxnMp6aazFZVmq8ZbkUGtQLENR/L58ky8zH4VUEF/WYRmdBiBHWHVtzOewtQ==
+
 react-native@0.83.10:
   version "0.83.10"
   resolved "https://registry.yarnpkg.com/react-native/-/react-native-0.83.10.tgz#3c10fe9c17c7baef383547c97082fa1f04a79971"
